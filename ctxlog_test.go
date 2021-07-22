@@ -3,47 +3,35 @@ package ctxlog_test
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/codeclysm/ctxlog"
-	"github.com/sirupsen/logrus"
 )
 
-func ExampleWithField() {
-	ctx := ctxlog.WithField(context.Background(), "banana", true)
-	entry := ctx.Value(ctxlog.LogKey).(*logrus.Entry)
-
-	fmt.Println(entry.Data)
-
-	// Output:
-	// map[banana:true]
-}
 func ExampleWithFields() {
-	ctx := ctxlog.WithFields(context.Background(), logrus.Fields{
-		"banana": true,
-	})
-	entry := ctx.Value(ctxlog.LogKey).(*logrus.Entry)
+	ctx := ctxlog.WithFields(context.Background(), map[string]interface{}{"banana": true})
+	fields := ctx.Value(ctxlog.LogKey).(map[string]interface{})
 
-	fmt.Println(entry.Data)
+	fmt.Println(fields)
 
 	// Output:
 	// map[banana:true]
 }
 
-func ExampleDebug() {
-	logger := logrus.New()
-	logger.Out = os.Stdout
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Formatter = &logrus.TextFormatter{
-		DisableTimestamp: true,
-	}
+func ExampleWithFields_merge() {
+	ctx := context.Background()
+	fields, _ := ctx.Value(ctxlog.LogKey).(map[string]interface{})
+	fmt.Println("background", fields)
 
-	ctx := context.WithValue(context.Background(), ctxlog.LogKey, logrus.NewEntry(logger))
+	ctx = ctxlog.WithFields(ctx, map[string]interface{}{"banana": true})
+	fields = ctx.Value(ctxlog.LogKey).(map[string]interface{})
+	fmt.Println("banana", fields)
 
-	ctx = ctxlog.WithField(ctx, "banana", true)
-
-	ctxlog.Debug(ctx, "message")
+	ctx = ctxlog.WithFields(ctx, map[string]interface{}{"apple": true})
+	fields = ctx.Value(ctxlog.LogKey).(map[string]interface{})
+	fmt.Println("apple", fields)
 
 	// Output:
-	// level=debug msg=message banana=true
+	// background map[]
+	// banana map[banana:true]
+	// apple map[apple:true banana:true]
 }

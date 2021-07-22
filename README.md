@@ -1,7 +1,7 @@
 ctxlog
 ======
 
-Ctxlog is an utility for logrus to store an entry in the context
+Ctxlog is a wrapper around https://logur.dev/ that uses values stored in `context` to enrich log messages.
 
 Imagine you have a function that needs to log something:
 
@@ -45,11 +45,11 @@ Well, with this package you can, although the actual function calls differ a bit
 
 ```go
 func MyFunction(ctx context.Context) {
-    ctxlog.Debug(ctx, "I'm doing stuff")
+    log.Debug(ctx, "I'm doing stuff")
 }
 
 func handler() {
-    ctx := ctxlog.WithField(context.Background(), "reqID", "uniqueReqID")
+    ctx := ctxlog.WithFields(context.Background(), map[string]interface{}{"reqID": "uniqueReqID"})
     MyFunction(ctx)
 }
 ```
@@ -60,15 +60,59 @@ DEBU[0001] I'm doing stuff      reqID=uniqueReqID
 
 ## How does it work
 
-`ctxlog.WithField()` populates a `logrus.Entry` in the given context with the key `ctxlog.LogKey`
-`Debug|Info|Warn|Error()` retrieve the `logrus.Entry` from the given context and use it to call the `logrus.Entry.Debug|Info|Warn|Error` function
+`ctxlog.WithFields()` populates a `map[string]interface{}` in the given context with the key `ctxlog.LogKey`
+`Debug|Info|Warn|Error()` retrieve the `map[string]interface{}` from the given context and use it to call the `Debug|Info|Warn|Error` function of the underlying logger
+
+## How to use it
+
+If you have a logur logger, it's simple, you just wrap it. In this example we are using a logrus logur logger (try saying that quickly):
+
+```go
+import (
+    logrusadapter "logur.dev/adapter/logrus"
+    github.com/codeclysm/ctxlog
+)
+
+func main() {
+    // Create logrus logger
+    logrusLog := logrus.New()
+
+    logrusLog.SetOutput(os.Stdout)
+    logrusLog.SetFormatter(&logrus.TextFormatter{
+        EnvironmentOverrideColors: true,
+    })
+
+    // Create logur logger from logrus logger
+    logurLog := logrusadapter.New(logrusLog)
+
+    // Create ctxlog logger from logur logger
+    ctxLog := ctxlog.New(logurLog)
+
+    // You can use it with the context
+    log.Debug(context.Background(), "I'm doing stuff") // Will print "I'm doing stuff"
+
+    // Put fields into the context and log again
+    ctx := ctxlog.WithFields(context.Background(), map[string]interface{}{
+        "reqID": "uniqueReqID",
+        "method": "GET"
+    })
+
+    log.Debug(ctx, "I'm doing stuff") // Will print "I'm doing stuff reqID=uniqueRedID method-GET"
+}
+
+
+```
 
 ## FAQ
 
-*Why should I save a logrus.Entry in the context instead of just logging all the context values?*
+*Why should I save a map[string]interface{} in the context instead of just logging all the context values?*
 
-Because you probably don't want to log everything in the context, there could be structs and pointer in there. Also it's not trivial to walk through a context values
+Because you probably don't want to log everything in the context, there could be structs and pointer in there. Also it's not trivial to walk through context values
 
-*Why should I pass a `context` if I could just pass an already populated `logrus.Entry`?*
+*Why not use directly logrus?*
 
-There's no real advantage, except that a lot of functions already take a `context` for other reasons.
+Because logur has a cleaner interface with less methods to override
+
+*What happens if there are no values set?*
+
+No additional fields are added, no panics
