@@ -1,5 +1,5 @@
-module github.com/codeclysm/ctxlog
+module github.com/codeclysm/ctxlog/v2
 
 go 1.12
 
-require github.com/sirupsen/logrus v1.4.2
+require logur.dev/logur v0.17.0
